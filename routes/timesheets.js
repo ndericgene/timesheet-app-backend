@@ -1,107 +1,47 @@
-// routes/timesheets.js
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const pool = require("../db");
-const authenticate = require("../middleware/authenticate");
+const Timesheet = require('../models/Timesheet');
+const { Parser } = require('json2csv');
 
-// Create or update a timesheet
-router.post("/", authenticate, async (req, res) => {
-  const { user_id, week_start, times } = req.body;
-
+// Create timesheet
+router.post('/', async (req, res) => {
   try {
-    for (const entry of times) {
-      const { day, job_name, work_class, hours } = entry;
-
-      if (!day || !job_name || !work_class || hours === undefined) continue;
-
-      await pool.query(
-        `INSERT INTO timesheets (user_id, week_start, day, job_name, work_class, hours)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [user_id, week_start, day, job_name, work_class, hours]
-      );
-    }
-
-    res.status(201).json({ message: "Timesheet submitted" });
+    const timesheet = new Timesheet(req.body);
+    await timesheet.save();
+    res.status(201).json(timesheet);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(400).json({ error: 'Failed to submit timesheet' });
   }
 });
 
-// Manager: view all submitted timesheets
-router.get("/pending", authenticate, async (req, res) => {
-  if (req.user.role !== "manager") {
-    return res.status(403).json({ error: "Access denied" });
-  }
-
+// Get all timesheets (manager)
+router.get('/', async (req, res) => {
   try {
-    const result = await pool.query(
-      "SELECT * FROM timesheets WHERE approved IS NULL ORDER BY week_start DESC"
-    );
-    res.json(result.rows);
+    const timesheets = await Timesheet.find().sort({ createdAt: -1 });
+    res.json(timesheets);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: 'Failed to fetch timesheets' });
   }
 });
 
-// Approve a timesheet
-router.put("/:id/approve", authenticate, async (req, res) => {
-  if (req.user.role !== "manager") {
-    return res.status(403).json({ error: "Access denied" });
-  }
-
+// Weekly export as CSV
+router.get('/export/weekly', async (req, res) => {
   try {
-    await pool.query("UPDATE timesheets SET approved = TRUE WHERE id = $1", [
-      req.params.id,
-    ]);
-    res.json({ message: "Timesheet approved" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
-  }
-});
+    const lastWeek = new Date();
+    lastWeek.setDate(lastWeek.getDate() - 7);
+    const timesheets = await Timesheet.find({ createdAt: { $gte: lastWeek } });
 
-// Export all timesheets as CSV
-const { Parser } = require("json2csv");
-router.get("/export", authenticate, async (req, res) => {
-  if (req.user.role !== "manager") {
-    return res.status(403).json({ error: "Access denied" });
-  }
+    const fields = ['employeeName', 'jobName', 'workClass', 'hours', 'notes', 'date'];
+    const json2csv = new Parser({ fields });
+    const csv = json2csv.parse(timesheets);
 
-  try {
-    const result = await pool.query("SELECT * FROM timesheets ORDER BY week_start DESC");
-
-    const fields = ["user_id", "week_start", "day", "job_name", "work_class", "hours"];
-    const parser = new Parser({ fields });
-    const csv = parser.parse(result.rows);
-
-    res.header("Content-Type", "text/csv");
-    res.attachment("timesheets.csv");
+    res.header('Content-Type', 'text/csv');
+    res.attachment('weekly_timesheets.csv');
     return res.send(csv);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Error generating CSV" });
-  }
-});
-// Get all pending timesheets
-router.get('/pending', async (req, res) => {
-  try {
-    const pending = await Timesheet.find({ status: 'pending' });
-    res.json(pending);
-  } catch (err) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Approve a timesheet
-router.post('/:id/approve', async (req, res) => {
-  try {
-    const updated = await Timesheet.findByIdAndUpdate(req.params.id, { status: 'approved' }, { new: true });
-    res.json(updated);
-  } catch (err) {
-    res.status(500).json({ error: 'Approval failed' });
+    return res.status(500).json({ error: 'Failed to export CSV' });
   }
 });
 
 module.exports = router;
+
