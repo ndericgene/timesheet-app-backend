@@ -28,6 +28,7 @@ router.post('/register', async (req, res) => {
 });
 
 // Login user (by username OR email)
+console.log("Login request received:", req.body);
 router.post('/login', async (req, res) => {
   const { username, email, password } = req.body;
 
@@ -42,12 +43,12 @@ router.post('/login', async (req, res) => {
 
     const user = userResult.rows[0];
 
-    if (!user || !user.password) {
+    if (!user || !user.password_hash) {
       console.warn('Login failed: user not found or missing password');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
       console.warn('Login failed: invalid password');
       return res.status(401).json({ error: 'Invalid credentials' });
