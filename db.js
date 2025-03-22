@@ -1,12 +1,22 @@
-// db.js
 const { Pool } = require('pg');
+require('dotenv').config();
 
 const pool = new Pool({
-  user: process.env.DB_USER || 'centralmech',
-  host: process.env.DB_HOST || 'timesheetdb.cz4s4ye26uw4.us-east-2.rds.amazonaws.com',
-  database: process.env.DB_NAME || 'timesheetdb',
-  password: process.env.DB_PASSWORD || 'Faithful2025!',
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'your_username',
+  password: process.env.DB_PASSWORD || 'your_password',
+  database: process.env.DB_NAME || 'your_database',
   port: process.env.DB_PORT || 5432,
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+});
+
+pool.on('connect', () => {
+  console.log('Connected to PostgreSQL database');
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle PostgreSQL client', err);
+  process.exit(-1);
 });
 
 module.exports = pool;
