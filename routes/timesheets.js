@@ -1,59 +1,59 @@
+// routes/timesheets.js
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const { verifyToken } = require('../auth/auth');
+const { Parser } = require('json2csv');
 
-// Submit a timesheet
+// Submit timesheet
 router.post('/', verifyToken, async (req, res) => {
-  const { employeeName, entries } = req.body;
-
   try {
-    for (let entry of entries) {
-      const { jobName, workClass, hours, date } = entry;
+    const { employeeName, records } = req.body;
+
+    for (const record of records) {
+      const { jobName, workClass, hours, date } = record;
+      if (!jobName || !workClass || !hours || !date) continue;
+
       await pool.query(
-        `INSERT INTO timesheets (employee_name, job_name, work_class, hours, date_submitted, user_id)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [employeeName, jobName, workClass, hours, date, req.user.userId]
+        'INSERT INTO timesheets (employeeName, jobName, workClass, hours, date) VALUES ($1, $2, $3, $4, $5)',
+        [employeeName, jobName, workClass, hours, date]
       );
     }
 
-    res.status(201).json({ message: 'Timesheet submitted' });
+    res.status(201).json({ message: 'Timesheet submitted successfully' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Failed to submit timesheet' });
+    res.status(500).json({ error: 'Error submitting timesheet' });
   }
 });
 
-// Get all timesheets (manager use)
+// Get all timesheets
 router.get('/', verifyToken, async (req, res) => {
   try {
-    const result = await pool.query(
-      'SELECT * FROM timesheets ORDER BY date_submitted DESC'
-    );
+    const result = await pool.query('SELECT * FROM timesheets ORDER BY date DESC');
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch timesheets' });
+    res.status(500).json({ error: 'Error fetching timesheets' });
   }
 });
 
-// Weekly CSV export
-const { Parser } = require('json2csv');
+// Export weekly CSV
 router.get('/export/weekly', verifyToken, async (req, res) => {
   try {
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
+    const lastWeek = new Date();
+    lastWeek.setDate(lastWeek.getDate() - 7);
     const result = await pool.query(
-      'SELECT employee_name, job_name, work_class, hours, date_submitted FROM timesheets WHERE date_submitted >= $1',
-      [oneWeekAgo]
+      'SELECT employeeName, jobName, workClass, hours, date FROM timesheets WHERE date >= $1',
+      [lastWeek]
     );
 
-    const parser = new Parser({ fields: ['employee_name', 'job_name', 'work_class', 'hours', 'date_submitted'] });
+    const fields = ['employeeName', 'jobName', 'workClass', 'hours', 'date'];
+    const parser = new Parser({ fields });
     const csv = parser.parse(result.rows);
 
     res.header('Content-Type', 'text/csv');
     res.attachment('weekly_timesheets.csv');
-    res.send(csv);
+    return res.send(csv);
   } catch (err) {
     res.status(500).json({ error: 'Failed to export CSV' });
   }

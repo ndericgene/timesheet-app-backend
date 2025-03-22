@@ -37,7 +37,7 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-//get jwt auth
+//get jwt auth[]
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
 const verifyToken = (req, res, next) => {
