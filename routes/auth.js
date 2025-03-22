@@ -7,12 +7,13 @@ const { verifyToken } = require('../auth/auth');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
-// Register
+// Register a new user
 router.post('/register', async (req, res) => {
   const { username, email, password, role } = req.body;
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
+
     const newUser = await pool.query(
       `INSERT INTO users (username, email, password, role)
        VALUES ($1, $2, $3, $4) RETURNING id, username, email, role`,
@@ -21,12 +22,12 @@ router.post('/register', async (req, res) => {
 
     res.status(201).json(newUser.rows[0]);
   } catch (err) {
-    console.error(err);
+    console.error('Registration error:', err);
     res.status(500).json({ error: 'Registration failed' });
   }
 });
 
-// Login
+// Login user (by username OR email)
 router.post('/login', async (req, res) => {
   const { username, email, password } = req.body;
 
@@ -35,12 +36,20 @@ router.post('/login', async (req, res) => {
     const value = username || email;
 
     const userResult = await pool.query(
-      `SELECT * FROM users WHERE ${field} = $1`, [value]
+      `SELECT * FROM users WHERE ${field} = $1`,
+      [value]
     );
 
     const user = userResult.rows[0];
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    if (!user || !user.password) {
+      console.warn('Login failed: user not found or missing password');
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      console.warn('Login failed: invalid password');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -50,14 +59,21 @@ router.post('/login', async (req, res) => {
       { expiresIn: '1d' }
     );
 
-    res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+      },
+    });
   } catch (err) {
-    console.error(err);
+    console.error('Login error:', err);
     res.status(500).json({ error: 'Login failed' });
   }
 });
 
-// Profile
+// Get current user's profile
 router.get('/me', verifyToken, async (req, res) => {
   try {
     const user = await pool.query(
@@ -66,6 +82,7 @@ router.get('/me', verifyToken, async (req, res) => {
     );
     res.json(user.rows[0]);
   } catch (err) {
+    console.error('Profile fetch error:', err);
     res.status(500).json({ error: 'Unable to fetch profile' });
   }
 });
