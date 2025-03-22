@@ -2,27 +2,71 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const pool = require('../db');
+const { verifyToken } = require('../auth/auth');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+
+// Register
+router.post('/register', async (req, res) => {
+  const { username, email, password, role } = req.body;
+
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = await pool.query(
+      `INSERT INTO users (username, email, password, role)
+       VALUES ($1, $2, $3, $4) RETURNING id, username, email, role`,
+      [username, email, hashedPassword, role || 'employee']
+    );
+
+    res.status(201).json(newUser.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Registration failed' });
+  }
+});
 
 // Login
 router.post('/login', async (req, res) => {
-  const { identifier, password } = req.body;
+  const { username, email, password } = req.body;
 
   try {
-    const user = await User.findOne({
-      $or: [{ email: identifier }, { username: identifier }]
-    });
+    const field = username ? 'username' : 'email';
+    const value = username || email;
 
-    if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+    const userResult = await pool.query(
+      `SELECT * FROM users WHERE ${field} = $1`, [value]
+    );
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+    const user = userResult.rows[0];
 
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
 
-    res.json({ token, user: { id: user._id, username: user.username, role: user.role } });
+    const token = jwt.sign(
+      { userId: user.id, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
+    res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    console.error(err);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Profile
+router.get('/me', verifyToken, async (req, res) => {
+  try {
+    const user = await pool.query(
+      'SELECT id, username, email, role FROM users WHERE id = $1',
+      [req.user.userId]
+    );
+    res.json(user.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Unable to fetch profile' });
   }
 });
 

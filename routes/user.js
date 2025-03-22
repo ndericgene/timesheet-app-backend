@@ -1,42 +1,46 @@
 const express = require('express');
 const router = express.Router();
+const pool = require('../db');
 const bcrypt = require('bcryptjs');
-const User = require('../models/User');
+const { verifyToken } = require('../auth/auth');
 
 // Get all users
-router.get('/', async (req, res) => {
+router.get('/', verifyToken, async (req, res) => {
   try {
-    const users = await User.find().select('-password');
-    res.json(users);
+    const result = await pool.query('SELECT id, username, email, role FROM users ORDER BY id ASC');
+    res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch users' });
+    console.error(err);
+    res.status(500).json({ error: 'Failed to retrieve users' });
   }
 });
 
-// Add user
-router.post('/', async (req, res) => {
+// Add new user
+router.post('/', verifyToken, async (req, res) => {
+  const { username, email, password, role } = req.body;
+
   try {
-    const { username, email, password, role } = req.body;
-
-    const existing = await User.findOne({ $or: [{ email }, { username }] });
-    if (existing) return res.status(400).json({ error: 'User already exists' });
-
-    const hashed = await bcrypt.hash(password, 10);
-    const user = new User({ username, email, password: hashed, role });
-    await user.save();
-
-    res.status(201).json({ id: user._id, username: user.username, role: user.role });
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const result = await pool.query(
+      'INSERT INTO users (username, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id, username, email, role',
+      [username, email, hashedPassword, role]
+    );
+    res.status(201).json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to add user' });
+    console.error(err);
+    res.status(500).json({ error: 'Failed to create user' });
   }
 });
 
 // Delete user
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', verifyToken, async (req, res) => {
+  const { id } = req.params;
+
   try {
-    await User.findByIdAndDelete(req.params.id);
-    res.sendStatus(204);
+    await pool.query('DELETE FROM users WHERE id = $1', [id]);
+    res.status(204).send();
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Failed to delete user' });
   }
 });

@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const pool = require('./db');
+const pool = require('../db');
 const router = express.Router();
 
 // Register a New User
@@ -37,5 +37,21 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+//get jwt auth
+const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
+const verifyToken = (req, res, next) => {
+  const token = req.headers['authorization'];
+  if (!token) return res.status(403).json({ error: 'No token provided' });
+
+  try {
+    const decoded = jwt.verify(token.split(' ')[1], JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+};
+
+module.exports = {verifyToken};
 module.exports = router;

@@ -1,47 +1,62 @@
 const express = require('express');
 const router = express.Router();
-const Timesheet = require('../models/Timesheet');
-const { Parser } = require('json2csv');
+const pool = require('../db');
+const { verifyToken } = require('../auth/auth');
 
-// Create timesheet
-router.post('/', async (req, res) => {
+// Submit a timesheet
+router.post('/', verifyToken, async (req, res) => {
+  const { employeeName, entries } = req.body;
+
   try {
-    const timesheet = new Timesheet(req.body);
-    await timesheet.save();
-    res.status(201).json(timesheet);
+    for (let entry of entries) {
+      const { jobName, workClass, hours, date } = entry;
+      await pool.query(
+        `INSERT INTO timesheets (employee_name, job_name, work_class, hours, date_submitted, user_id)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [employeeName, jobName, workClass, hours, date, req.user.userId]
+      );
+    }
+
+    res.status(201).json({ message: 'Timesheet submitted' });
   } catch (err) {
-    res.status(400).json({ error: 'Failed to submit timesheet' });
+    console.error(err);
+    res.status(500).json({ error: 'Failed to submit timesheet' });
   }
 });
 
-// Get all timesheets (manager)
-router.get('/', async (req, res) => {
+// Get all timesheets (manager use)
+router.get('/', verifyToken, async (req, res) => {
   try {
-    const timesheets = await Timesheet.find().sort({ createdAt: -1 });
-    res.json(timesheets);
+    const result = await pool.query(
+      'SELECT * FROM timesheets ORDER BY date_submitted DESC'
+    );
+    res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch timesheets' });
   }
 });
 
-// Weekly export as CSV
-router.get('/export/weekly', async (req, res) => {
+// Weekly CSV export
+const { Parser } = require('json2csv');
+router.get('/export/weekly', verifyToken, async (req, res) => {
   try {
-    const lastWeek = new Date();
-    lastWeek.setDate(lastWeek.getDate() - 7);
-    const timesheets = await Timesheet.find({ createdAt: { $gte: lastWeek } });
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-    const fields = ['employeeName', 'jobName', 'workClass', 'hours', 'notes', 'date'];
-    const json2csv = new Parser({ fields });
-    const csv = json2csv.parse(timesheets);
+    const result = await pool.query(
+      'SELECT employee_name, job_name, work_class, hours, date_submitted FROM timesheets WHERE date_submitted >= $1',
+      [oneWeekAgo]
+    );
+
+    const parser = new Parser({ fields: ['employee_name', 'job_name', 'work_class', 'hours', 'date_submitted'] });
+    const csv = parser.parse(result.rows);
 
     res.header('Content-Type', 'text/csv');
     res.attachment('weekly_timesheets.csv');
-    return res.send(csv);
+    res.send(csv);
   } catch (err) {
-    return res.status(500).json({ error: 'Failed to export CSV' });
+    res.status(500).json({ error: 'Failed to export CSV' });
   }
 });
 
 module.exports = router;
-

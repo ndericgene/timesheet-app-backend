@@ -1,9 +1,16 @@
+// db.js
 const { Pool } = require('pg');
 require('dotenv').config();
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false } // Required for AWS RDS connections
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASS,
+  database: process.env.DB_NAME,
+  port: 5432,
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 module.exports = pool;
