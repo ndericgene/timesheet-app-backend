@@ -8,21 +8,16 @@ const { Parser } = require('json2csv');
 // Submit timesheet
 router.post('/', verifyToken, async (req, res) => {
   try {
-    const { employeeName, records } = req.body;
+    const { user_id, week_ending, job_name, work_class, monday_hours, tuesday_hours, wednesday_hours, thursday_hours, friday_hours, saturday_hours, sunday_hours, total_hours, status } = req.body;
 
-    if (!employeeName || !records || !Array.isArray(records)) {
+    if (!user_id || !week_ending || !job_name || !work_class || !monday_hours || !tuesday_hours || !wednesday_hours || !thursday_hours || !friday_hours || !saturday_hours || !sunday_hours || !total_hours || !status) {
       return res.status(400).json({ error: 'Invalid input data' });
     }
 
-    for (const record of records) {
-      const { jobName, workClass, hours, date } = record;
-      if (!jobName || !workClass || !hours || !date) continue;
-
-      await pool.query(
-        'INSERT INTO timesheets (employeeName, jobName, workClass, hours, date) VALUES ($1, $2, $3, $4, $5)',
-        [employeeName, jobName, workClass, hours, date]
-      );
-    }
+    await pool.query(
+      'INSERT INTO timesheets (user_id, week_ending, job_name, work_class, monday_hours, tuesday_hours, wednesday_hours, thursday_hours, friday_hours, saturday_hours, sunday_hours, total_hours, status, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())',
+      [user_id, week_ending, job_name, work_class, monday_hours, tuesday_hours, wednesday_hours, thursday_hours, friday_hours, saturday_hours, sunday_hours, total_hours, status]
+    );
 
     res.status(201).json({ message: 'Timesheet submitted successfully' });
   } catch (err) {
