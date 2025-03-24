@@ -10,6 +10,10 @@ router.post('/', verifyToken, async (req, res) => {
   try {
     const { employeeName, records } = req.body;
 
+    if (!employeeName || !records || !Array.isArray(records)) {
+      return res.status(400).json({ error: 'Invalid input data' });
+    }
+
     for (const record of records) {
       const { jobName, workClass, hours, date } = record;
       if (!jobName || !workClass || !hours || !date) continue;
@@ -22,7 +26,7 @@ router.post('/', verifyToken, async (req, res) => {
 
     res.status(201).json({ message: 'Timesheet submitted successfully' });
   } catch (err) {
-    console.error(err);
+    console.error('Error submitting timesheet:', err);
     res.status(500).json({ error: 'Error submitting timesheet' });
   }
 });
@@ -33,6 +37,7 @@ router.get('/', verifyToken, async (req, res) => {
     const result = await pool.query('SELECT * FROM timesheets ORDER BY date DESC');
     res.json(result.rows);
   } catch (err) {
+    console.error('Error fetching timesheets:', err);
     res.status(500).json({ error: 'Error fetching timesheets' });
   }
 });
@@ -55,6 +60,7 @@ router.get('/export/weekly', verifyToken, async (req, res) => {
     res.attachment('weekly_timesheets.csv');
     return res.send(csv);
   } catch (err) {
+    console.error('Failed to export CSV:', err);
     res.status(500).json({ error: 'Failed to export CSV' });
   }
 });

@@ -3,7 +3,7 @@ const cors = require('cors');
 const app = express();
 const authRoutes = require('./routes/auth');
 const timesheetRoutes = require('./routes/timesheets');
-//const userRoutes = require('./routes/users');
+const userRoutes = require('./routes/user');
 
 require('dotenv').config();
 
@@ -13,7 +13,7 @@ app.use(express.json());
 // Route bindings
 app.use('/api/auth', authRoutes);
 app.use('/api/timesheets', timesheetRoutes);
-//app.use('/api/users', userRoutes);
+app.use('/api/users', userRoutes);
 
 // Health check
 app.get('/', (req, res) => {

@@ -4,6 +4,8 @@ const jwt = require('jsonwebtoken');
 const pool = require('../db');
 const router = express.Router();
 
+const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+
 // Register a New User
 router.post('/register', async (req, res) => {
   const { name, email, password, role } = req.body;
@@ -31,15 +33,14 @@ router.post('/login', async (req, res) => {
     const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) return res.status(401).json({ error: 'Invalid credentials' });
 
-    const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET);
+    const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET);
     res.json({ token });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
-//get jwt auth[]
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
+// Verify Token Middleware
 const verifyToken = (req, res, next) => {
   const token = req.headers['authorization'];
   if (!token) return res.status(403).json({ error: 'No token provided' });
@@ -53,8 +54,4 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-
-
-
-module.exports = router;
-module.exports = {verifyToken};
+module.exports = { router, verifyToken };
