@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
+const https = require('https');
 const app = express();
 const authRoutes = require('./routes/auth');
 const timesheetRoutes = require('./routes/timesheets');
@@ -21,6 +23,21 @@ app.get('/', (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+
+// Load SSL certificates
+const privateKey = fs.readFileSync('/path/to/your/private.key', 'utf8');
+const certificate = fs.readFileSync('/path/to/your/certificate.crt', 'utf8');
+const ca = fs.readFileSync('/path/to/your/ca_bundle.crt', 'utf8');
+
+const credentials = {
+  key: privateKey,
+  cert: certificate,
+  ca: ca
+};
+
+// Create HTTPS server
+const httpsServer = https.createServer(credentials, app);
+
+httpsServer.listen(PORT, () => {
+  console.log(`HTTPS Server running on port ${PORT}`);
 });
