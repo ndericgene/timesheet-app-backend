@@ -1,30 +1,62 @@
+// Submit timesheet
 // routes/timesheets.js
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
-const { verifyToken } = require('../auth/auth');
+const { verifyToken } = require('../auth/auth'); // use existing token middlewar
+
 const { Parser } = require('json2csv');
 
-// Submit timesheet
+// Submit a new timesheet
 router.post('/', verifyToken, async (req, res) => {
   try {
-    const { user_id, week_ending, job_name, work_class, monday_hours, tuesday_hours, wednesday_hours, thursday_hours, friday_hours, saturday_hours, sunday_hours, total_hours, status } = req.body;
+    const {
+      user_id,
+      week_ending,
+      job_name,
+      work_class,
+      monday_hours,
+      tuesday_hours,
+      wednesday_hours,
+      thursday_hours,
+      friday_hours,
+      saturday_hours,
+      sunday_hours,
+      total_hours,
+      status
+    } = req.body;
 
-    if (!user_id || !week_ending || !job_name || !work_class || !monday_hours || !tuesday_hours || !wednesday_hours || !thursday_hours || !friday_hours || !saturday_hours || !sunday_hours || !total_hours || !status) {
-      return res.status(400).json({ error: 'Invalid input data' });
-    }
-
-    await pool.query(
-      'INSERT INTO timesheets (user_id, week_ending, job_name, work_class, monday_hours, tuesday_hours, wednesday_hours, thursday_hours, friday_hours, saturday_hours, sunday_hours, total_hours, status, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())',
-      [user_id, week_ending, job_name, work_class, monday_hours, tuesday_hours, wednesday_hours, thursday_hours, friday_hours, saturday_hours, sunday_hours, total_hours, status]
+    const result = await pool.query(
+      `INSERT INTO timesheets (
+        user_id, week_ending, job_name, work_class,
+        monday_hours, tuesday_hours, wednesday_hours, thursday_hours,
+        friday_hours, saturday_hours, sunday_hours,
+        total_hours, status
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+      [
+        user_id,
+        week_ending,
+        job_name,
+        work_class,
+        monday_hours,
+        tuesday_hours,
+        wednesday_hours,
+        thursday_hours,
+        friday_hours,
+        saturday_hours,
+        sunday_hours,
+        total_hours,
+        status
+      ]
     );
 
-    res.status(201).json({ message: 'Timesheet submitted successfully' });
-  } catch (err) {
-    console.error('Error submitting timesheet:', err);
-    res.status(500).json({ error: 'Error submitting timesheet' });
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error submitting timesheet:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
+
 
 // Get all timesheets
 router.get('/', verifyToken, async (req, res) => {
