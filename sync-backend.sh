@@ -11,4 +11,3 @@ echo "== Running backend deploy script remotely..."
 ssh -i "$PEM" $REMOTE "cd $APP_PATH && ./deploy-backend.sh"
 
 echo "== ✅ Backend synced and restarted"
-

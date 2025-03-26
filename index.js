@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
-const https = require('https');
+
 require('dotenv').config();
 
 const app = express();
@@ -20,24 +19,20 @@ app.use('/api/auth', authRoutes);
 app.use('/api/timesheets', timesheetRoutes);
 app.use('/api/users', userRoutes);
 
+// Test route
+app.get('/api/test', (req, res) => {
+  res.json({ success: true });
+});
+=======
+
 // Health check
 app.get('/', (req, res) => {
   res.send('API is running');
 });
 
-// Load HTTPS certificates
-const privateKey = fs.readFileSync('/etc/letsencrypt/live/centralmechanical.org/privkey.pem', 'utf8');
-const certificate = fs.readFileSync('/etc/letsencrypt/live/centralmechanical.org/cert.pem', 'utf8');
-const ca = fs.readFileSync('/etc/letsencrypt/live/centralmechanical.org/chain.pem', 'utf8');
 
-const credentials = {
-  key: privateKey,
-  cert: certificate,
-  ca: ca
-};
-
-// Create HTTPS server
+// Use plain HTTP server
 const PORT = process.env.PORT || 5000;
-https.createServer(credentials, app).listen(PORT, () => {
-  console.log(`✅ HTTPS Server running on port ${PORT}`);
+app.listen(PORT, () => {
+  console.log(`✅ HTTP Server running on port ${PORT}`);
 });

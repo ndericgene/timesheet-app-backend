@@ -4,8 +4,12 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../db');
 const { verifyToken } = require('../auth/auth');
+const morgan = require('morgan');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+
+// Use morgan for logging
+router.use(morgan('combined'));
 
 // Register a new user
 router.post('/register', async (req, res) => {
@@ -15,7 +19,7 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = await pool.query(
-      `INSERT INTO users (username, email, password, role)
+      `INSERT INTO users (username, email, password_hash, role)
        VALUES ($1, $2, $3, $4) RETURNING id, username, email, role`,
       [username, email, hashedPassword, role || 'employee']
     );
@@ -29,6 +33,7 @@ router.post('/register', async (req, res) => {
 
 // Login user (by username OR email)
 router.post('/login', async (req, res) => {
+  console.log("Login request received:", req.body);
   const { username, email, password } = req.body;
 
   try {
@@ -42,12 +47,12 @@ router.post('/login', async (req, res) => {
 
     const user = userResult.rows[0];
 
-    if (!user || !user.password) {
+    if (!user || !user.password_hash) {
       console.warn('Login failed: user not found or missing password');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
       console.warn('Login failed: invalid password');
       return res.status(401).json({ error: 'Invalid credentials' });
