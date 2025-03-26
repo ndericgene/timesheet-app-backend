@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+
 require('dotenv').config();
 
 const app = express();
@@ -22,11 +23,13 @@ app.use('/api/users', userRoutes);
 app.get('/api/test', (req, res) => {
   res.json({ success: true });
 });
+=======
 
 // Health check
 app.get('/', (req, res) => {
   res.send('API is running');
 });
+
 
 // Use plain HTTP server
 const PORT = process.env.PORT || 5000;

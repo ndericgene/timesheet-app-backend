@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../db');
+const pool = require('./db');
 const bcrypt = require('bcryptjs');
-const { verifyToken } = require('../auth/auth');
+const { verifyToken } = require('./auth/auth');
 
 // Get all users
 router.get('/', verifyToken, async (req, res) => {
