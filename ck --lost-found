@@ -1,0 +1,12 @@
+[33m8b550ca[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{0}: checkout: moving from 27f14fad47199ec297a95af763a43c9097e1c4a6 to main
+[33m27f14fa[m[33m ([m[1;31morigin/saved-commits[m[33m, [m[1;32mworking-build[m[33m, [m[1;32msaved-commits[m[33m)[m HEAD@{1}: commit: working login
+[33m9efbb76[m HEAD@{2}: pull origin main --rebase (start): checkout 9efbb761e9de3e5adc9a1355a43a3b43c8082db1
+[33m8b550ca[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{3}: commit: routes
+[33m969e50e[m HEAD@{4}: commit: home update stable cant login
+[33m11c8983[m HEAD@{5}: commit: home update stable bad login
+[33mc6ec063[m HEAD@{6}: commit: home update5
+[33m11b226a[m HEAD@{7}: commit: home update4
+[33mf3dfcd4[m HEAD@{8}: commit: home update3
+[33mcb7d486[m HEAD@{9}: commit: home update2
+[33ma6e6d40[m HEAD@{10}: commit: home updates
+[33m80e635f[m HEAD@{11}: clone: from https://github.com/ndericgene/timesheet-app-backend.git
